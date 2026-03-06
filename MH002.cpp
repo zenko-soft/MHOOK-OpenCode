@@ -1,4 +1,4 @@
-﻿#include <Windows.h>
+#include <Windows.h>
 #include "Bitmap.h"
 #include "Settings.h"
 #include "MagicWindow.h"
@@ -97,7 +97,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,
 					UnhookWindowsHookEx(handle);
 					PostQuitMessage(0);
 				}
-				// Показываем или скрываем красную точку курсора после закрытия диалога
+			// Показываем или скрываем красную точку курсора после закрытия диалога
 				if(MHSettings::flag_cursor_visible)
 					CursorDot::Show();
 				else

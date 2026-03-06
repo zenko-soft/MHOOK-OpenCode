@@ -1,9 +1,11 @@
-﻿#include "RecentFiles.h"
+#include "RecentFiles.h"
 #include "Settings.h"
+#include "resource.h"
 #include <shlwapi.h>
 #pragma comment(lib, "shlwapi.lib")
 #include <algorithm>
 #include <tchar.h>
+static TCHAR selectedFilename[1258];
 HWND RecentFiles::hListBox = NULL;
 std::vector<RecentFileInfo> RecentFiles::files;
 // Для главного окна (создает отдельный ListBox)
@@ -47,7 +49,15 @@ void RecentFiles::SortByDate() {
 			return CompareFileTime(&a.lastWriteTime, &b.lastWriteTime) > 0;
 		});
 	if (files.size() > MAX_FILES) {
-		files.resize(MAX_FILES);
+		std::vector<RecentFileInfo> dateSorted(files.begin(), files.begin() + MAX_FILES);
+		std::vector<RecentFileInfo> alphaSorted(files.begin() + MAX_FILES, files.end());
+		std::sort(alphaSorted.begin(), alphaSorted.end(),
+			[](const RecentFileInfo& a, const RecentFileInfo& b) {
+				return a.filename < b.filename;
+			});
+		files.clear();
+		files.insert(files.end(), dateSorted.begin(), dateSorted.end());
+		files.insert(files.end(), alphaSorted.begin(), alphaSorted.end());
 	}
 }
 void RecentFiles::PopulateList() {
@@ -81,8 +91,17 @@ void RecentFiles::PopulateDialogList(HWND hDlg, int comboId) {
 void RecentFiles::OnDialogFileSelected(HWND hDlg, int comboId, int index) {
 	if (index >= 0 && index < (int)files.size()) {
 		if (GetFileAttributes(files[index].fullpath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+			// Показываем имя файла в текстовом поле
+			std::basic_string<TCHAR> displayName = files[index].filename;
+			size_t dotPos = displayName.find_last_of(_T('.'));
+			if (dotPos != std::basic_string<TCHAR>::npos) {
+				displayName = displayName.substr(0, dotPos);
+			}
+			// Сохраняем выбранное имя файла
+			_tcsncpy_s(selectedFilename, displayName.c_str(), _TRUNCATE);
+			SendDlgItemMessage(hDlg, IDC_EDIT1, WM_SETTEXT, 0, (LPARAM)displayName.c_str());
+			// Загружаем конфигурацию
 			MHSettings::OpenMHookConfig(hDlg, (TCHAR*)files[index].fullpath.c_str());
-			// Обновляем диалог после загрузки
 			MHSettings::AfterLoad(hDlg);
 		}
 	}
@@ -93,6 +112,9 @@ std::basic_string<TCHAR> RecentFiles::GetExecutableDirectory() {
 	PathRemoveFileSpec(path);
 	PathAddBackslash(path);
 	return std::basic_string<TCHAR>(path);
+}
+const TCHAR* RecentFiles::GetSelectedFilename() {
+	return selectedFilename[0] != _T('\0') ? selectedFilename : NULL;
 }
 void RecentFiles::Shutdown() {
 	if (hListBox) {

@@ -29,7 +29,7 @@ extern	int top_position;
 static TCHAR *filter_MHOOK=L"файлы MHOOK\0*.MHOOK\0\0";
 static TCHAR tfilename[1258];
 //static char tfiletitle[1258]={"default.MHOOK"};
-static TCHAR tfiletitle[1258];
+TCHAR tfiletitle[1258];
 int MHSettings::num_positions=4;
 int MHSettings::mouse_sensitivity=1;
 DWORD MHSettings::time_between_pushes=100; // 100 миллисекунд между нажатиями на клавиши
@@ -201,14 +201,14 @@ static BOOL CALLBACK DlgSettingsWndProc(HWND hdwnd,
 					CursorDot::Hide();
 				}
 				return 1;
-			case IDC_LIST_RECENT_FILES:
-				if (HIWORD(wparam) == CBN_SELCHANGE) {
-					int sel = SendDlgItemMessage(hdwnd, IDC_LIST_RECENT_FILES, CB_GETCURSEL, 0, 0);
-					if (sel != CB_ERR) {
-						RecentFiles::OnDialogFileSelected(hdwnd, IDC_LIST_RECENT_FILES, sel);
-					}
+case IDC_LIST_RECENT_FILES:
+			if (HIWORD(wparam) == CBN_SELCHANGE) {
+				int sel = SendDlgItemMessage(hdwnd, IDC_LIST_RECENT_FILES, CB_GETCURSEL, 0, 0);
+				if (sel != CB_ERR) {
+					RecentFiles::OnDialogFileSelected(hdwnd, IDC_LIST_RECENT_FILES, sel);
 				}
-				return 1;
+			}
+			return 1;
 			case IDCANCEL: // Не случилось
 				EndDialog(hdwnd,2);
 				return 1;
@@ -244,8 +244,13 @@ LRESULT  CALLBACK HookProc(int disabled,WPARAM wParam,LPARAM lParam);
 void MHSettings::FillDialogue(HWND hdwnd)
 {
 	int i;
-	// Имя файла показать в диалоге
-	SendDlgItemMessage(hdwnd,IDC_EDIT1, WM_SETTEXT, 0L, (LPARAM)tfiletitle);
+	// Имя файла показать в диалоге - сначала пробуем выбранное из списка, иначе tfiletitle
+	const TCHAR* selectedFile = RecentFiles::GetSelectedFilename();
+	if (selectedFile) {
+		SendDlgItemMessage(hdwnd,IDC_EDIT1, WM_SETTEXT, 0L, (LPARAM)selectedFile);
+	} else {
+		SendDlgItemMessage(hdwnd,IDC_EDIT1, WM_SETTEXT, 0L, (LPARAM)tfiletitle);
+	}
 	// Заполнить выпадающие списки с текущими значениями!
 		// 1. Чувствительность
 		for(i=0;i<MH_NUM_SENSITIVITY;i++)
@@ -484,8 +489,8 @@ BOOL MHSettings::SettingsDialogue(HWND hwnd)
 		top_position=-1;
 		handle = SetWindowsHookEx(WH_MOUSE_LL,
 									HookProc,
-                                 GetModuleHandle(NULL),
-                                 NULL);
+                                    GetModuleHandle(NULL),
+                                    NULL);
 	}
 	if(!return_code)
 	{

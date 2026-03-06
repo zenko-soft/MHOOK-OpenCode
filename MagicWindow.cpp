@@ -310,18 +310,29 @@ void MagicWindow::Init()
 	}
 	// корректировка размеров окна с учетом заголовка и рамки (нужна до создания окон)
 	AdjustWindowRect(&adjust_rect,WS_CAPTION|WS_THICKFRAME,FALSE);
+	// Windows 11 имеет более тонкие рамки - определяем версию
+	typedef LONG (WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOEXW);
+	RtlGetVersionPtr RtlGetVersion = (RtlGetVersionPtr)GetProcAddress(GetModuleHandleA("ntdll.dll"), "RtlGetVersion");
+	RTL_OSVERSIONINFOEXW osvi = {0};
+	osvi.dwOSVersionInfoSize = sizeof(osvi);
+	bool isWin11 = false;
+	if (RtlGetVersion) {
+		RtlGetVersion(&osvi);
+		isWin11 = (osvi.dwMajorVersion >= 10 && osvi.dwBuildNumber >= 22000);
+	}
+	// Для Windows 11 уменьшаем корректировку рамки (acier frame)
+	int frame_correction = isWin11 ? 4 : 8;
+	int title_correction = isWin11 ? 32 : 31;
 	// Создание окон в цикле
 	for(i=0;i<NUM_MAGIC_WINDOWS;i++)
 	{
 		// Корректируем размеры: в файле хранятся размеры клиентской области,
 		// а CreateWindowEx ожидает размеры всего окна с учетом рамки и заголовка
-		RECT rc = {0, 0, magic_wnd[i].width, magic_wnd[i].height};
-		AdjustWindowRect(&rc, WS_CAPTION|WS_THICKFRAME, FALSE);
-		int total_width = rc.right - rc.left;
-		int total_height = rc.bottom - rc.top;
+		int total_width = magic_wnd[i].width - frame_correction;
+		int total_height = magic_wnd[i].height - title_correction;
 		// Также корректируем позицию (учитываем рамку слева и заголовок сверху)
-		int total_x = magic_wnd[i].x + adjust_rect.left;
-		int total_y = magic_wnd[i].y + adjust_rect.top;
+		int total_x = magic_wnd[i].x + frame_correction;
+		int total_y = magic_wnd[i].y + title_correction;
 		//Создание главного окна
 		magic_wnd[i].MWhwnd=CreateWindowEx(WS_EX_LAYERED|WS_EX_TOPMOST|WS_EX_TOOLWINDOW,
 			MHMagicWindowCName,

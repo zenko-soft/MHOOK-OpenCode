@@ -104,7 +104,7 @@ BEGIN
     LTEXT           "Мёртвая зона вверх-вниз",IDC_STATIC,245,335,112,8
     LTEXT           "Оставить режим 3 на одной из осей",IDC_STATIC,18,350,136,8
     COMBOBOX        IDC_MODE3AXE,152,348,112,50,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    EDITTEXT        IDC_EDIT1,15,7,92,14,ES_AUTOHSCROLL | WS_DISABLED
+    EDITTEXT        IDC_EDIT1,592,346,92,14,ES_AUTOHSCROLL | ES_READONLY
     PUSHBUTTON      "Сохранить...",IDC_BUTTON_SAVE,119,7,63,14
     PUSHBUTTON      "Загрузить...",IDC_BUTTON_LOAD,186,7,63,14
     CONTROL         "из конца в конец по оси горизонтально в два движения (обязательна остановка хоть на 50 мс)",IDC_CHECK_2MOVES,
@@ -147,7 +147,7 @@ BEGIN
     LTEXT           "2:",IDC_STATIC,181,127,8,8
     LTEXT           "2:",IDC_STATIC,182,145,8,8
     COMBOBOX        IDC_BUTTON7_1,192,143,67,152,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    COMBOBOX        IDC_LIST_RECENT_FILES,15,8,101,200,CBS_DROPDOWN | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_LIST_RECENT_FILES,15,8,101,350,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     GROUPBOX        "Кнопки мыши",IDC_STATIC,7,102,497,56
     GROUPBOX        "Удержание правой кнопки мыши и движения жмут кнопки",IDC_STATIC,457,20,209,80
 END
