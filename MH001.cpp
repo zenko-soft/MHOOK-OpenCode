@@ -34,6 +34,14 @@ extern bool timer5_needed; // Из MagicWindow
 int WINAPI WinMain(HINSTANCE hInst,HINSTANCE,LPSTR cline,INT)
 // Командную строку не обрабатываем
 {
+	// DPI awareness для Windows 10/11
+	typedef HRESULT (WINAPI *SetProcessDpiAwarenessFunc)(int);
+	HMODULE shcore = LoadLibraryA("shcore.dll");
+	if (shcore) {
+		SetProcessDpiAwarenessFunc func = (SetProcessDpiAwarenessFunc)GetProcAddress(shcore, "SetProcessDpiAwareness");
+		if (func) func(2); // PROCESS_PER_MONITOR_DPI_AWARE
+		FreeLibrary(shcore);
+	}
 	ATOM aresult; // Для всяких кодов возврата
 	BOOL boolresult;
 	MSG msg; // Сообщение
