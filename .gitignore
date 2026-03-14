@@ -17,7 +17,14 @@ Release/
 
 # Resource
 *.aps
+MHookResources.bin
 
 # Temporary
 RC*
 *.tmp
+
+# Reserved Windows names
+nul
+aux
+con
+prn

@@ -29,11 +29,30 @@ extern bool G_eytracker_is_working;
 extern int G_eytracker_num; // какой из трекеров выбран
 extern bool timer5_needed; // Из MagicWindow
 //=======================================================================
+// Проверка наличия Visual C++ Redistributable
+//=======================================================================
+static bool CheckVCRedist() {
+	const wchar_t* dlls[] = { L"msvcp140.dll", L"vcruntime140.dll", L"vcruntime140_1.dll" };
+	for (int i = 0; i < 3; i++) {
+		HMODULE h = LoadLibraryW(dlls[i]);
+		if (!h) {
+			wchar_t msg[512];
+			wsprintf(msg, L"Отсутствует библиотека %s\n\nТребуется Visual C++ Redistributable.\nСкачайте с: https://aka.ms/vs/17/release/vc_redist.x64.exe", dlls[i]);
+			MessageBoxW(NULL, msg, L"MHook - Ошибка", MB_OK | MB_ICONERROR);
+			return false;
+		}
+		FreeLibrary(h);
+	}
+	return true;
+}
+//=======================================================================
 // программа
 //=======================================================================
 int WINAPI WinMain(HINSTANCE hInst,HINSTANCE,LPSTR cline,INT)
 // Командную строку не обрабатываем
 {
+	// Проверка VC++ Redistributable
+	if (!CheckVCRedist()) return 0;
 	// DPI awareness для Windows 10/11
 	typedef HRESULT (WINAPI *SetProcessDpiAwarenessFunc)(int);
 	HMODULE shcore = LoadLibraryA("shcore.dll");
