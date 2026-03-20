@@ -11,21 +11,15 @@ struct RecentFileInfo {
 };
 class RecentFiles {
 public:
-	static const int MAX_FILES = 5000;
-	static void Initialize(HWND parentHwnd, int x, int y, int width, int height);
-	static void Shutdown();
-	static void RefreshList();
-	static void PopulateDialogList(HWND hDlg, int listboxId);
+	static void PopulateDialogList(HWND hDlg, int comboId);
 	static void OnDialogFileSelected(HWND hDlg, int listboxId, int index);
+	static void Shutdown();
 private:
 	static HWND hListBox;
 	static std::vector<RecentFileInfo> files;
 	static std::vector<RecentFileInfo> embeddedFiles;
 	static bool initialized;
 	static void LoadEmbeddedFiles();
-	static void ScanDirectory();
-	static void SortFiles();
-	static void PopulateList();
 	static std::basic_string<TCHAR> GetExecutableDirectory();
 };
 #endif

@@ -15,6 +15,9 @@ for filename in os.listdir(SOURCE_DIR):
                 'mtime': stat.st_mtime
             })
 
+# Сортировка по дате (новые первые)
+files.sort(key=lambda x: -x['mtime'])
+
 print(f"Found {len(files)} .mhook files")
 
 with open(OUTPUT_FILE, 'wb') as f:

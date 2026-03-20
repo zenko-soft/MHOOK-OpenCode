@@ -500,6 +500,7 @@ END
 //
 
 IDR_EMBEDDEDSETTINGS    RCDATA                  "EmbeddedSettings.bin"
+IDR_RECENTFILES_CACHE   RCDATA                  "RecentFiles.cache"
 
 #endif    // Русский (Россия) resources
 /////////////////////////////////////////////////////////////////////////////

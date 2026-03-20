@@ -320,19 +320,21 @@ static BOOL CALLBACK DlgSettingsWndProc(HWND hdwnd,
 										}
 									}
 								}
-								TCHAR fullPath[MAX_PATH];
-								_tcscpy(fullPath, exePath);
-								_tcscat(fullPath, fileNameOrig);
+								TCHAR extCheck[256];
+								_tcscpy(extCheck, fileNameOrig);
 								bool endsWithMHOOK = false;
-								TCHAR* dotInOrig = _tcsrchr(fileNameOrig, _T('.'));
-								if (dotInOrig && _tcsicmp(dotInOrig, _T(".MHOOK")) == 0) {
+								TCHAR* dotInCheck = _tcsrchr(extCheck, _T('.'));
+								if (dotInCheck && _tcsicmp(dotInCheck, _T(".MHOOK")) == 0) {
 									endsWithMHOOK = true;
-									dotInOrig[0] = _T('\0');
-									TCHAR* prevDot = _tcsrchr(fileNameOrig, _T('.'));
+									dotInCheck[0] = _T('\0');
+									TCHAR* prevDot = _tcsrchr(extCheck, _T('.'));
 									if (prevDot && _tcsicmp(prevDot, _T(".MHOO")) == 0) {
 										endsWithMHOOK = false;
 									}
 								}
+								TCHAR fullPath[MAX_PATH];
+								_tcscpy(fullPath, exePath);
+								_tcscat(fullPath, fileNameOrig);
 								if (matchScore > bestMatchScore || (matchScore == bestMatchScore && endsWithMHOOK && !bestMatchIsMHOOK)) {
 									bestMatchScore = matchScore;
 									_tcscpy(bestMatchPath, fullPath);

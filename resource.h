@@ -335,6 +335,7 @@
 #define IDC_LIST_RECENT_FILES           1703
 #define IDC_BUTTON_LOAD_BY_WINDOW       1704
 #define IDR_EMBEDDEDSETTINGS            2
+#define IDR_RECENTFILES_CACHE           3
 
 // Next default values for new objects
 // 
