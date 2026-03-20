@@ -1,5 +1,9 @@
-﻿#include <windows.h>
+﻿#define _CRT_SECURE_NO_WARNINGS
+#include <windows.h>
 #include <stdio.h>
+#include <tchar.h>
+#include <shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
 #include "Settings.h"
 #include "RecentFiles.h"
 #include "MHKeypad.h"
@@ -29,7 +33,7 @@ extern	int top_position;
 static TCHAR *filter_MHOOK=L"файлы MHOOK\0*.MHOOK\0\0";
 static TCHAR tfilename[1258];
 //static char tfiletitle[1258]={"default.MHOOK"};
-TCHAR tfiletitle[1258];
+static TCHAR tfiletitle[1258];
 int MHSettings::num_positions=4;
 int MHSettings::mouse_sensitivity=1;
 DWORD MHSettings::time_between_pushes=100; // 100 миллисекунд между нажатиями на клавиши
@@ -201,14 +205,19 @@ static BOOL CALLBACK DlgSettingsWndProc(HWND hdwnd,
 					CursorDot::Hide();
 				}
 				return 1;
-case IDC_LIST_RECENT_FILES:
-			if (HIWORD(wparam) == CBN_SELCHANGE) {
-				int sel = SendDlgItemMessage(hdwnd, IDC_LIST_RECENT_FILES, CB_GETCURSEL, 0, 0);
-				if (sel != CB_ERR) {
-					RecentFiles::OnDialogFileSelected(hdwnd, IDC_LIST_RECENT_FILES, sel);
+			case IDC_LIST_RECENT_FILES:
+				if (HIWORD(wparam) == CBN_SELCHANGE) {
+					int sel = static_cast<int>(SendDlgItemMessage(hdwnd, IDC_LIST_RECENT_FILES, CB_GETCURSEL, 0, 0));
+					if (sel != CB_ERR) {
+						RecentFiles::OnDialogFileSelected(hdwnd, IDC_LIST_RECENT_FILES, sel);
+					}
 				}
+				return 1;
+			case IDC_BUTTON_LOAD_BY_WINDOW: {
+				SetTimer(hdwnd, 100, 2000, NULL);
+				SetWindowText(hdwnd, L"Нажмите на окно игры...");
+				return 1;
 			}
-			return 1;
 			case IDCANCEL: // Не случилось
 				EndDialog(hdwnd,2);
 				return 1;
@@ -221,10 +230,132 @@ case IDC_LIST_RECENT_FILES:
 				return 1;
 			} // switch WM_COMMAND
 		break; // if WM_COMMAND
+	case WM_DROPFILES: {
+		HDROP hDrop = (HDROP)wparam;
+		TCHAR filename[MAX_PATH];
+		if (DragQueryFile(hDrop, 0, filename, MAX_PATH)) {
+			TCHAR* ext = PathFindExtension(filename);
+			if (ext && _tcsicmp(ext, _T(".MHOOK")) == 0) {
+				MHSettings::OpenMHookConfig(hdwnd, filename);
+				MHSettings::AfterLoad(hdwnd);
+			} else if (ext && _tcsicmp(ext, _T(".MHOO")) == 0) {
+				_tcscpy(ext, _T(".MHOOK"));
+				MHSettings::OpenMHookConfig(hdwnd, filename);
+				MHSettings::AfterLoad(hdwnd);
+			}
+		}
+		DragFinish(hDrop);
+		return 1;
+	}
+	case WM_TIMER: {
+		if (wparam == 100) {
+			KillTimer(hdwnd, 100);
+			SetWindowText(hdwnd, L"Нажмите на окно игры...");
+			SetTimer(hdwnd, 101, 1500, NULL);
+		}
+		if (wparam == 101) {
+			KillTimer(hdwnd, 101);
+			HWND fgWnd = GetForegroundWindow();
+			if (fgWnd && fgWnd != hdwnd) {
+				DWORD pid;
+				GetWindowThreadProcessId(fgWnd, &pid);
+				if (pid != GetCurrentProcessId()) {
+					TCHAR windowTitle[256];
+					GetWindowText(fgWnd, windowTitle, 256);
+					if (windowTitle[0]) {
+						TCHAR exePath[MAX_PATH];
+						TCHAR searchPattern[MAX_PATH];
+						GetModuleFileName(NULL, exePath, MAX_PATH);
+						PathRemoveFileSpec(exePath);
+						PathAddBackslash(exePath);
+						_tcscpy(searchPattern, exePath);
+						_tcscat(searchPattern, _T("*.MHOOK"));
+						TCHAR titleUpper[256];
+						_tcscpy(titleUpper, windowTitle);
+						TCHAR titleClean[256];
+						int j = 0;
+						for (int i = 0; titleUpper[i]; i++) {
+							if (titleUpper[i] != _T(' ') && titleUpper[i] != _T('-') && titleUpper[i] != _T('_') && titleUpper[i] != _T('(') && titleUpper[i] != _T(')') && titleUpper[i] != _T('[') && titleUpper[i] != _T(']')) {
+								titleClean[j++] = titleUpper[i];
+							}
+						}
+						titleClean[j] = _T('\0');
+						CharUpperBuff(titleClean, static_cast<DWORD>(_tcslen(titleClean)));
+						TCHAR msg[512];
+							int bestMatchScore = 0;
+						TCHAR bestMatchPath[MAX_PATH] = {0};
+						WIN32_FIND_DATA fd;
+						HANDLE hFind = FindFirstFile(searchPattern, &fd);
+						if (hFind != INVALID_HANDLE_VALUE) {
+							do {
+								TCHAR* dotPos = _tcsrchr(fd.cFileName, _T('.'));
+								if (dotPos) *dotPos = _T('\0');
+								TCHAR fileClean[256];
+								j = 0;
+								for (int i = 0; fd.cFileName[i]; i++) {
+									if (fd.cFileName[i] < 256 && _istalnum(fd.cFileName[i])) {
+										fileClean[j++] = fd.cFileName[i];
+									}
+								}
+								fileClean[j] = _T('\0');
+								CharUpperBuff(fileClean, static_cast<DWORD>(_tcslen(fileClean)));
+								int matchScore = 0;
+								if (_tcslen(fileClean) >= 2 && _tcslen(titleClean) >= 2) {
+									if (_tcsstr(fileClean, titleClean) != NULL) {
+										matchScore = static_cast<int>(_tcslen(titleClean)) * 10;
+									} else if (_tcsstr(titleClean, fileClean) != NULL) {
+										matchScore = static_cast<int>(_tcslen(fileClean)) * 10;
+									} else {
+										int minLen = static_cast<int>(_tcslen(titleClean));
+										if (_tcslen(fileClean) >= static_cast<size_t>(minLen) && minLen >= 3) {
+											TCHAR filePrefix[256];
+											_tcsncpy(filePrefix, fileClean, minLen);
+											filePrefix[minLen] = _T('\0');
+											if (_tcscmp(filePrefix, titleClean) == 0) {
+												matchScore = static_cast<int>(_tcslen(titleClean)) * 8;
+											}
+										}
+									}
+								}
+								if (matchScore > bestMatchScore) {
+									bestMatchScore = matchScore;
+									_tcscpy(bestMatchPath, exePath);
+									_tcscat(bestMatchPath, fd.cFileName);
+									_tcscat(bestMatchPath, _T(".MHOOK"));
+								}
+							} while (FindNextFile(hFind, &fd));
+							FindClose(hFind);
+						}
+						bool loaded = false;
+						if (bestMatchScore > 0) {
+							MHSettings::OpenMHookConfig(hdwnd, bestMatchPath);
+							loaded = true;
+						}
+						if (!loaded) {
+							wsprintf(msg, L"Не найдено: %s", windowTitle);
+							MessageBox(hdwnd, msg, L"Не найдено", MB_OK);
+						}
+						if (loaded) {
+							RecentFiles::PopulateDialogList(hdwnd, IDC_LIST_RECENT_FILES);
+							MHSettings::AfterLoad(hdwnd);
+							MHSettings::BeforeSaveOrStart(hdwnd);
+							ResetEytrackerBuffer();
+							MagicWindow::ForceTopMost();
+							EndDialog(hdwnd, 0);
+						}
+					}
+				}
+			}
+			SetWindowText(hdwnd, L"Из мыши в клавиатуру: настройка");
+		}
+		return 1;
+	}
 	case WM_INITDIALOG:
 		//SetWindowPos(hdwnd,NULL,50,50,0,0,SWP_NOSIZE);
 		//SetWindowPos(hdwnd,HWND_TOPMOST,50,50,0,0,SWP_NOSIZE | SWP_NOREDRAW);
 		SetWindowPos(hdwnd,HWND_TOP,50,50,0,0,SWP_NOSIZE | SWP_NOREDRAW);
+		// Разрешаем drag and drop
+		DragAcceptFiles(hdwnd, TRUE);
 		// Здесь не работает.
 		//SetWindowLong(hdwnd,GWL_STYLE,GetWindowLong(hdwnd,GWL_STYLE) | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
 		MHSettings::FillDialogue(hdwnd); // Заполняет списки
@@ -244,13 +375,8 @@ LRESULT  CALLBACK HookProc(int disabled,WPARAM wParam,LPARAM lParam);
 void MHSettings::FillDialogue(HWND hdwnd)
 {
 	int i;
-	// Имя файла показать в диалоге - сначала пробуем выбранное из списка, иначе tfiletitle
-	const TCHAR* selectedFile = RecentFiles::GetSelectedFilename();
-	if (selectedFile) {
-		SendDlgItemMessage(hdwnd,IDC_EDIT1, WM_SETTEXT, 0L, (LPARAM)selectedFile);
-	} else {
-		SendDlgItemMessage(hdwnd,IDC_EDIT1, WM_SETTEXT, 0L, (LPARAM)tfiletitle);
-	}
+	// Имя файла показать в диалоге
+	SendDlgItemMessage(hdwnd,IDC_EDIT1, WM_SETTEXT, 0L, (LPARAM)tfiletitle);
 	// Заполнить выпадающие списки с текущими значениями!
 		// 1. Чувствительность
 		for(i=0;i<MH_NUM_SENSITIVITY;i++)
@@ -480,7 +606,7 @@ BOOL MHSettings::SettingsDialogue(HWND hwnd)
 		flag_left_button_waits=false;
 		flag_right_button_waits=false;
 	}
-	return_code=DialogBox(MHInst,MAKEINTRESOURCE(IDD_DIALOG_SETTINGS),hwnd,(DLGPROC)DlgSettingsWndProc);
+	return_code = static_cast<BOOL>(DialogBox(MHInst, MAKEINTRESOURCE(IDD_DIALOG_SETTINGS), hwnd, (DLGPROC)DlgSettingsWndProc));
 	if((!return_code)&&(restart_hook))
 	{
 		// Проинициализировать хук хендлер (пока не знаю, что его нужно проинициализировать)
@@ -489,8 +615,8 @@ BOOL MHSettings::SettingsDialogue(HWND hwnd)
 		top_position=-1;
 		handle = SetWindowsHookEx(WH_MOUSE_LL,
 									HookProc,
-                                    GetModuleHandle(NULL),
-                                    NULL);
+                                 GetModuleHandle(NULL),
+                                 NULL);
 	}
 	if(!return_code)
 	{
@@ -601,6 +727,16 @@ int MHSettings::OpenMHookConfig(HWND hwnd, TCHAR *default_filename)
 	else // Имя файла получено в качестве параметра функции
 	{
 		wcscpy_s(tfilename,default_filename);
+		// Показываем имя файла в IDC_EDIT1
+		TCHAR tmpPath[MAX_PATH];
+		wcscpy_s(tmpPath, default_filename);
+		TCHAR* fileName = wcsrchr(tmpPath, L'\\');
+		if (fileName) fileName++;
+		else fileName = tmpPath;
+		TCHAR* dotPos = wcsrchr(fileName, L'.');
+		if (dotPos) *dotPos = L'\0';
+		SendDlgItemMessage(hwnd, IDC_EDIT1, WM_SETTEXT, 0, (LPARAM)fileName);
+		wcscpy_s(tfiletitle, fileName);
 	}
 	FILE *fin=NULL;
 	_wfopen_s(&fin,tfilename,L"r");
@@ -620,7 +756,7 @@ int MHSettings::OpenMHookConfig(HWND hwnd, TCHAR *default_filename)
 	int int_arg1, int_arg2;
 	WORD WORD_arg;
 	// Читаем все строки одну за другой
-	while(1==fscanf_s(fin,"%s",char_buf, _countof(char_buf)))
+	while(1==fscanf_s(fin,"%s",char_buf, static_cast<unsigned int>(_countof(char_buf))))
 	{
 		found=false;
 		for(i=0;i<NUM_SAVE_LINES;i++) // Перебираем все возможные параметры
@@ -771,26 +907,26 @@ int MHSettings::SaveMHookConfig(HWND hwnd)
 //===============================================================================================
 void MHSettings::BeforeSaveOrStart(HWND hdwnd)
 {
-			dlg_current_sensitivity=SendDlgItemMessage(hdwnd,IDC_SENSITIVITY, CB_GETCURSEL, 0, 0L);
+			dlg_current_sensitivity=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_SENSITIVITY, CB_GETCURSEL, 0, 0L));
 			MHSettings::SetMouseSensitivity(dlg_sensitivity[dlg_current_sensitivity].value);
 			// 2. Кнопки
-			dlg_current_scancodes[0]=SendDlgItemMessage(hdwnd,IDC_UP, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[1]=SendDlgItemMessage(hdwnd,IDC_RIGHT, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[2]=SendDlgItemMessage(hdwnd,IDC_DOWN, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[3]=SendDlgItemMessage(hdwnd,IDC_LEFT, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[4]=SendDlgItemMessage(hdwnd,IDC_BUTTON5, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[5]=SendDlgItemMessage(hdwnd,IDC_BUTTON6, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[6]=SendDlgItemMessage(hdwnd,IDC_UP2, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[7]=SendDlgItemMessage(hdwnd,IDC_RIGHT2, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[8]=SendDlgItemMessage(hdwnd,IDC_DOWN2, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[9]=SendDlgItemMessage(hdwnd,IDC_LEFT2, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[10]=SendDlgItemMessage(hdwnd,IDC_BUTTON7, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[11]=SendDlgItemMessage(hdwnd,IDC_UP3, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[12]=SendDlgItemMessage(hdwnd,IDC_RIGHT3, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[13]=SendDlgItemMessage(hdwnd,IDC_DOWN3, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[14]=SendDlgItemMessage(hdwnd,IDC_LEFT3, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[15]=SendDlgItemMessage(hdwnd,IDC_BUTTON6_1, CB_GETCURSEL, 0, 0L);
-			dlg_current_scancodes[16]=SendDlgItemMessage(hdwnd,IDC_BUTTON7_1, CB_GETCURSEL, 0, 0L);
+			dlg_current_scancodes[0]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_UP, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[1]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_RIGHT, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[2]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_DOWN, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[3]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_LEFT, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[4]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_BUTTON5, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[5]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_BUTTON6, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[6]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_UP2, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[7]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_RIGHT2, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[8]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_DOWN2, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[9]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_LEFT2, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[10]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_BUTTON7, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[11]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_UP3, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[12]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_RIGHT3, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[13]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_DOWN3, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[14]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_LEFT3, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[15]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_BUTTON6_1, CB_GETCURSEL, 0, 0L));
+			dlg_current_scancodes[16]=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_BUTTON7_1, CB_GETCURSEL, 0, 0L));
 			MHKeypad::Init(dlg_scancodes[dlg_current_scancodes[0]].value,
 				dlg_scancodes[dlg_current_scancodes[1]].value,
 				dlg_scancodes[dlg_current_scancodes[2]].value,
@@ -809,18 +945,18 @@ void MHSettings::BeforeSaveOrStart(HWND hdwnd)
 				dlg_scancodes[dlg_current_scancodes[15]].value,
 				dlg_scancodes[dlg_current_scancodes[16]].value);
 			// 2.1. Мёртвые зоны
-			dlg_current_deadzone_x=SendDlgItemMessage(hdwnd,IDC_DEADX, CB_GETCURSEL, 0, 0L);
+			dlg_current_deadzone_x=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_DEADX, CB_GETCURSEL, 0, 0L));
 			MHSettings::deadx=dlg_deadzones[dlg_current_deadzone_x].value;
-			dlg_current_deadzone_y=SendDlgItemMessage(hdwnd,IDC_DEADY, CB_GETCURSEL, 0, 0L);
+			dlg_current_deadzone_y=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_DEADY, CB_GETCURSEL, 0, 0L));
 			MHSettings::deady=dlg_deadzones[dlg_current_deadzone_y].value;
 			// 2.2 Режим 3 для одной из осей в режиме 4
-			dlg_current_mode3axe=SendDlgItemMessage(hdwnd,IDC_MODE3AXE, CB_GETCURSEL, 0, 0L);
+			dlg_current_mode3axe=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_MODE3AXE, CB_GETCURSEL, 0, 0L));
 			MHSettings::mode3axe=dlg_mode3axe[dlg_current_mode3axe].value;
 			// 2.5. Минимальная скорость мыши для нажатия на пятую кнопку
-			dlg_current_speed=SendDlgItemMessage(hdwnd,IDC_SPEED, CB_GETCURSEL, 0, 0L);
+			dlg_current_speed=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_SPEED, CB_GETCURSEL, 0, 0L));
 			MHSettings::minimal_mouse_speed=dlg_speed[dlg_current_speed].value;
 			// 2.6. Число направлений
-			dlg_current_direction=SendDlgItemMessage(hdwnd,IDC_DIRECTIONS, CB_GETCURSEL, 0, 0L);
+			dlg_current_direction=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_DIRECTIONS, CB_GETCURSEL, 0, 0L));
 			MHSettings::SetNumPositions(dlg_dirs[dlg_current_direction].value);
 			// 3. Радио-кнопка
 			MHSettings::flag_no_move_right_mb=false; // Во всех режимах, кроме пятого
@@ -869,13 +1005,13 @@ void MHSettings::BeforeSaveOrStart(HWND hdwnd)
 			//else
 			// 3.2. - кнопка не используется
 			// 4. Таймаут
-			dlg_current_timeout=SendDlgItemMessage(hdwnd,IDC_TIMEOUT, CB_GETCURSEL, 0, 0L);
+			dlg_current_timeout=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_TIMEOUT, CB_GETCURSEL, 0, 0L));
 			MHSettings::timeout_after_move=dlg_timeout[dlg_current_timeout].value;
 			// 4.5. Таймаут переключения режима левой кнопки мыши
-			dlg_current_switch_timeout=SendDlgItemMessage(hdwnd,IDC_SWITCH_TIMEOUT, CB_GETCURSEL, 0, 0L);
+			dlg_current_switch_timeout=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_SWITCH_TIMEOUT, CB_GETCURSEL, 0, 0L));
 			MHSettings::timeout_mouse_switch=dlg_switch_timeout[dlg_current_switch_timeout].value;
 			// 4.6.
-			dlg_current_circlescale=SendDlgItemMessage(hdwnd,IDC_CIRCLE_SCALES, CB_GETCURSEL, 0, 0L);
+			dlg_current_circlescale=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_CIRCLE_SCALES, CB_GETCURSEL, 0, 0L));
 			MHSettings::circle_scale_factor=dlg_circlescales[dlg_current_circlescale].value;
 			// 6. Разрешить ли нажатие пятой кнопки при быстром движении мышью
 			if(BST_CHECKED==SendDlgItemMessage(hdwnd,IDC_FAST_PUSH,BM_GETCHECK, 0, 0))
@@ -933,7 +1069,7 @@ void MHSettings::BeforeSaveOrStart(HWND hdwnd)
 		if(BST_CHECKED==SendDlgItemMessage(hdwnd,IDC_CHECK_LMB_AUTOCLICK,BM_GETCHECK, 0, 0))
 			MHSettings::flag_autoclick_lmb=true;
 		else MHSettings::flag_autoclick_lmb=false;
-		MHSettings::autoclick_speed_index=SendDlgItemMessage(hdwnd,IDC_AUTOCLICK_SPEED, CB_GETCURSEL, 0, 0L);
+		MHSettings::autoclick_speed_index=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_AUTOCLICK_SPEED, CB_GETCURSEL, 0, 0L));
 		// 20. видимый курсор (красная точка)
 		if(BST_CHECKED==SendDlgItemMessage(hdwnd,IDC_CHECK_CURSOR_VISIBLE,BM_GETCHECK, 0, 0))
 			MHSettings::flag_cursor_visible=true;

@@ -29,7 +29,7 @@ LRESULT CALLBACK CircleTranspWndProc(HWND hwnd,
 			EndPaint(hwnd,&ps);
 			break;
 		case WM_USER_MOVEWINDOW:
-			 MoveWindow(hwnd,wparam,lparam,100,100,FALSE);
+			 MoveWindow(hwnd, static_cast<int>(wparam), static_cast<int>(lparam), 100, 100, FALSE);
 			 break;
 		case WM_CLOSE: // Çàêðûòèå îêíà èãíîðèðóåòñÿ
 			break;

@@ -333,7 +333,8 @@
 #define IDC_AUTOCLICK_SPEED             1701
 #define IDC_CHECK_LMB_AUTOCLICK         1702
 #define IDC_LIST_RECENT_FILES           1703
-#define IDR_MHOOKDATA                   1
+#define IDC_BUTTON_LOAD_BY_WINDOW       1704
+#define IDR_EMBEDDEDSETTINGS            2
 
 // Next default values for new objects
 // 

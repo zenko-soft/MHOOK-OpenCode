@@ -37,7 +37,7 @@ unsigned __stdcall HeartBeatThread(void *p)
 {
 	while(!flag_ShutDownThreads)
 	{
-		if(SOCKET_ERROR==send(TETSocket,JSON_heart_beat,strlen(JSON_heart_beat),0)) return 0; // Connection closed
+		if(SOCKET_ERROR==send(TETSocket,JSON_heart_beat,static_cast<int>(strlen(JSON_heart_beat)),0)) return 0; // Connection closed
 		Sleep(1000);
 	}
 	return 0;
@@ -168,7 +168,7 @@ int BKBTET::Init(HWND hwnd)
 	// 1. Initialize TCP connection
 	if(TETconnect(hwnd)) goto cleanup;
 	// 2. Set Push mode
-	send(TETSocket,JSON_set_push,strlen(JSON_set_push),0);
+	send(TETSocket,JSON_set_push,static_cast<int>(strlen(JSON_set_push)),0);
 	recv(TETSocket, buffer, 4095, 0); // ignore the reply
 	// 2. Start heartbeat thread
 	handler_HeartBeat=_beginthreadex(NULL,0,HeartBeatThread,0,0,NULL);

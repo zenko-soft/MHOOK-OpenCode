@@ -190,7 +190,7 @@ BOOL CALLBACK DlgSettings2WndProc(HWND hdwnd,
 			{
 				if(hi==CBN_SELENDOK)
 				{
-					MagicWindow::magic_wnd[i].mw_color=SendDlgItemMessage(Settings2HWND,IDC_COMBO_WCOLORS[i], CB_GETCURSEL, 0, 0L);
+					MagicWindow::magic_wnd[i].mw_color=static_cast<int>(SendDlgItemMessage(Settings2HWND,IDC_COMBO_WCOLORS[i], CB_GETCURSEL, 0, 0L));
 					InvalidateRect(MagicWindow::magic_wnd[i].MWhwnd,NULL,FALSE);
 					return 1;
 				}
@@ -219,7 +219,7 @@ BOOL CALLBACK DlgSettings2WndProc(HWND hdwnd,
 		{
 			if(hi==CBN_SELENDOK)
 			{
-				G_eytracker_num=SendDlgItemMessage(Settings2HWND,IDC_COMBO_EYETRACKER, CB_GETCURSEL, 0, 0L);
+				G_eytracker_num=static_cast<int>(SendDlgItemMessage(Settings2HWND,IDC_COMBO_EYETRACKER, CB_GETCURSEL, 0, 0L));
 				return 1;
 			}
 		}
@@ -337,13 +337,13 @@ void MHSettings::BeforeSaveOrStart2(HWND hdwnd)
 	for(i=0;i<NUM_MAGIC_WINDOWS;i++)
 	{
 		// 3.мышь или айтрекер
-		MagicWindow::magic_wnd[i].mouse_or_eytracker=SendDlgItemMessage(hdwnd,IDC_COMBO_WSENS[i], CB_GETCURSEL, 0, 0L);
+		MagicWindow::magic_wnd[i].mouse_or_eytracker=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_COMBO_WSENS[i], CB_GETCURSEL, 0, 0L));
 		// 5.клавиши
-		MagicWindow::magic_wnd[i].button_index=SendDlgItemMessage(hdwnd,IDC_COMBO_WKEYS[i], CB_GETCURSEL, 0, 0L);
+		MagicWindow::magic_wnd[i].button_index=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_COMBO_WKEYS[i], CB_GETCURSEL, 0, 0L));
 		// 6.кнопка или переключатель
-		MagicWindow::magic_wnd[i].button_or_switch=SendDlgItemMessage(hdwnd,IDC_COMBO_WREPEATS[i], CB_GETCURSEL, 0, 0L);
+		MagicWindow::magic_wnd[i].button_or_switch=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_COMBO_WREPEATS[i], CB_GETCURSEL, 0, 0L));
 		// 7.группа
-		MagicWindow::magic_wnd[i].mw_group=SendDlgItemMessage(hdwnd,IDC_COMBO_WGROUPS[i], CB_GETCURSEL, 0, 0L);
+		MagicWindow::magic_wnd[i].mw_group=static_cast<int>(SendDlgItemMessage(hdwnd,IDC_COMBO_WGROUPS[i], CB_GETCURSEL, 0, 0L));
 	}
 }
 //====================================================================================
@@ -392,7 +392,7 @@ int MHSettings::Load2(FILE *f,int wcount)
 		MoveWindow(mw->MWhwnd, mw->x, mw->y, total_width, total_height, FALSE);
 		// Параметр-строка
 		if(NULL==fgets(lcbuffer,256,f)) return 1;
-		len=strlen(lcbuffer);
+		len=static_cast<int>(strlen(lcbuffer));
 		if(len>0)
 		{
 			if('\n'==lcbuffer[len-1]) lcbuffer[len-1]=0;

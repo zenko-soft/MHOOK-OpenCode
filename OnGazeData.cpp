@@ -60,11 +60,11 @@ void on_gaze_data(toit_gaze_data* gazedata, void *user_data)
 			break;
 		}
 		// Трекинг левого глаза
-		point_left.x=screen_x*gazedata->left.bingo.x;
-		point_left.y=screen_y*gazedata->left.bingo.y;
+		point_left.x = static_cast<LONG>(screen_x * gazedata->left.bingo.x);
+		point_left.y = static_cast<LONG>(screen_y * gazedata->left.bingo.y);
 		// Трекинг правого глаза
-		point_right.x=screen_x*gazedata->right.bingo.x;
-		point_right.y=screen_y*gazedata->right.bingo.y;
+		point_right.x = static_cast<LONG>(screen_x * gazedata->right.bingo.x);
+		point_right.y = static_cast<LONG>(screen_y * gazedata->right.bingo.y);
 		x=(point_right.x+point_left.x)/2;
 		y=(point_right.y+point_left.y)/2;
 		// Двигаем окно с кружочком (если оно есть)

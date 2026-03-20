@@ -1,4 +1,8 @@
-﻿#include <Windows.h>
+﻿#define _CRT_SECURE_NO_WARNINGS
+#include <Windows.h>
+#include <tchar.h>
+#include <shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
 #include "Bitmap.h"
 #include "Settings.h"
 #include "MagicWindow.h"
@@ -43,6 +47,8 @@ LRESULT CALLBACK WndProc(HWND hwnd,
 			CursorDot::Init();
 			// Дополняем tme хендлером окна
 			tme.hwndTrack=hwnd;
+			// Разрешаем drag and drop
+			DragAcceptFiles(hwnd, TRUE);
 			// Содрано из интернета - так мы делаем окно прозрачным в белых его частях
 			//SetLayeredWindowAttributes(hwnd,RGB(255,255,255),NULL,LWA_COLORKEY);
 			// Нет, делаем вот так, а то мышь проваливается
@@ -97,7 +103,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,
 					UnhookWindowsHookEx(handle);
 					PostQuitMessage(0);
 				}
-			// Показываем или скрываем красную точку курсора после закрытия диалога
+				// Показываем или скрываем красную точку курсора после закрытия диалога
 				if(MHSettings::flag_cursor_visible)
 					CursorDot::Show();
 				else
@@ -166,6 +172,41 @@ LRESULT CALLBACK WndProc(HWND hwnd,
 			*/
 			EndPaint(hwnd,&ps);
 			break;
+		case WM_DROPFILES: {
+			HDROP hDrop = (HDROP)wparam;
+			TCHAR filename[MAX_PATH];
+			if (DragQueryFile(hDrop, 0, filename, MAX_PATH)) {
+				TCHAR* ext = PathFindExtension(filename);
+				bool isMhook = false;
+				if (ext && _tcsicmp(ext, _T(".MHOOK")) == 0) {
+					isMhook = true;
+				} else if (ext && _tcsicmp(ext, _T(".MHOO")) == 0) {
+					_tcscpy(ext, _T(".MHOOK"));
+					isMhook = true;
+				}
+				if (isMhook) {
+					MHSettings::OpenMHookConfig(hwnd, filename);
+				} else {
+					HWND targetWnd = GetForegroundWindow();
+					if (targetWnd && targetWnd != hwnd) {
+						TCHAR windowTitle[256];
+						GetWindowText(targetWnd, windowTitle, 256);
+						if (windowTitle[0]) {
+							TCHAR mhookPath[MAX_PATH];
+							GetModuleFileName(NULL, mhookPath, MAX_PATH);
+							PathRemoveFileSpec(mhookPath);
+							PathAppend(mhookPath, windowTitle);
+							_tcscat(mhookPath, _T(".MHOOK"));
+							if (GetFileAttributes(mhookPath) != INVALID_FILE_ATTRIBUTES) {
+								MHSettings::OpenMHookConfig(hwnd, mhookPath);
+							}
+						}
+					}
+				}
+			}
+			DragFinish(hDrop);
+			return 0;
+		}
 		default: // Сообщения обрабатываются системой
 			return DefWindowProc(hwnd,message,wparam,lparam);
 	}
