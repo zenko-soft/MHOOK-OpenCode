@@ -284,10 +284,13 @@ static BOOL CALLBACK DlgSettingsWndProc(HWND hdwnd,
 						TCHAR msg[512];
 							int bestMatchScore = 0;
 						TCHAR bestMatchPath[MAX_PATH] = {0};
+						bool bestMatchIsMHOOK = false;
 						WIN32_FIND_DATA fd;
 						HANDLE hFind = FindFirstFile(searchPattern, &fd);
 						if (hFind != INVALID_HANDLE_VALUE) {
 							do {
+								TCHAR fileNameOrig[256];
+								_tcscpy(fileNameOrig, fd.cFileName);
 								TCHAR* dotPos = _tcsrchr(fd.cFileName, _T('.'));
 								if (dotPos) *dotPos = _T('\0');
 								TCHAR fileClean[256];
@@ -317,11 +320,23 @@ static BOOL CALLBACK DlgSettingsWndProc(HWND hdwnd,
 										}
 									}
 								}
-								if (matchScore > bestMatchScore) {
+								TCHAR fullPath[MAX_PATH];
+								_tcscpy(fullPath, exePath);
+								_tcscat(fullPath, fileNameOrig);
+								bool endsWithMHOOK = false;
+								TCHAR* dotInOrig = _tcsrchr(fileNameOrig, _T('.'));
+								if (dotInOrig && _tcsicmp(dotInOrig, _T(".MHOOK")) == 0) {
+									endsWithMHOOK = true;
+									dotInOrig[0] = _T('\0');
+									TCHAR* prevDot = _tcsrchr(fileNameOrig, _T('.'));
+									if (prevDot && _tcsicmp(prevDot, _T(".MHOO")) == 0) {
+										endsWithMHOOK = false;
+									}
+								}
+								if (matchScore > bestMatchScore || (matchScore == bestMatchScore && endsWithMHOOK && !bestMatchIsMHOOK)) {
 									bestMatchScore = matchScore;
-									_tcscpy(bestMatchPath, exePath);
-									_tcscat(bestMatchPath, fd.cFileName);
-									_tcscat(bestMatchPath, _T(".MHOOK"));
+									_tcscpy(bestMatchPath, fullPath);
+									bestMatchIsMHOOK = endsWithMHOOK;
 								}
 							} while (FindNextFile(hFind, &fd));
 							FindClose(hFind);
