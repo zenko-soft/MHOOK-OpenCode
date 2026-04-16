@@ -1,0 +1,23 @@
+# Visual Studio
+.vs/
+x64/
+Debug/
+Release/
+*.suo
+*.user
+*.filters
+
+# Build
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.pch
+*.idb
+
+# Resource
+*.aps
+
+# Temporary
+RC*
+*.tmp
